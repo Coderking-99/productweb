@@ -391,6 +391,38 @@ const EMAILJS_CONFIG = {
     publicKey: 'YOUR_PUBLIC_KEY' // You'll need to replace this
 };
 
+// Google Sheets Configuration
+const GOOGLE_SHEETS_CONFIG = {
+    apiKey: 'YOUR_GOOGLE_API_KEY', // You'll need to replace this
+    spreadsheetId: 'YOUR_SPREADSHEET_ID', // You'll need to replace this
+    range: 'Orders!A:M', // Sheet name and range
+    sheetName: 'Orders'
+};
+
+// Initialize Google Sheets API
+let sheetsApiLoaded = false;
+
+function initGoogleSheetsAPI() {
+    if (typeof gapi !== 'undefined') {
+        gapi.load('client', () => {
+            gapi.client.init({
+                apiKey: GOOGLE_SHEETS_CONFIG.apiKey,
+                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+            }).then(() => {
+                sheetsApiLoaded = true;
+                console.log('Google Sheets API initialized');
+            }).catch(error => {
+                console.error('Error initializing Google Sheets API:', error);
+            });
+        });
+    }
+}
+
+// Call initialization when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initGoogleSheetsAPI, 1000); // Small delay to ensure gapi is loaded
+});
+
 // Cart functionality
 let cart = [];
 
@@ -587,20 +619,123 @@ function processOrder() {
         items: cart,
         total: cart.reduce((sum, item) => sum + item.totalPrice, 0),
         orderDate: new Date().toLocaleDateString('en-IN'),
-        orderTime: new Date().toLocaleTimeString('en-IN')
+        orderTime: new Date().toLocaleTimeString('en-IN'),
+        timestamp: new Date().toISOString()
     };
     
     // Close checkout modal and show loading
     document.getElementById('checkoutModal').classList.remove('active');
-    showNotification('Processing your order and sending confirmation...', 'info');
+    showNotification('Processing your order...', 'info');
     
-    // Send email receipt
+    // Save to Google Sheets first, then send email
     setTimeout(() => {
-        sendEmailReceipt(orderData);
-        showOrderConfirmation(orderData);
-        cart = []; // Clear cart
-        updateCartUI();
+        saveOrderToGoogleSheets(orderData)
+            .then(() => {
+                sendEmailReceipt(orderData);
+                showOrderConfirmation(orderData);
+                showNotification('Order placed successfully!', 'success');
+            })
+            .catch(error => {
+                console.error('Error saving to sheets:', error);
+                // Still send email even if sheets fails
+                sendEmailReceipt(orderData);
+                showOrderConfirmation(orderData);
+                showNotification('Order placed! (Note: Database save failed)', 'info');
+            })
+            .finally(() => {
+                cart = []; // Clear cart
+                updateCartUI();
+            });
     }, 1500);
+}
+
+// Save order to Google Sheets
+async function saveOrderToGoogleSheets(orderData) {
+    if (!sheetsApiLoaded) {
+        throw new Error('Google Sheets API not loaded');
+    }
+
+    try {
+        // Prepare row data for the spreadsheet
+        const rowData = [
+            orderData.orderNumber,
+            orderData.orderDate,
+            orderData.orderTime,
+            orderData.customerDetails.customerName,
+            orderData.customerDetails.customerEmail,
+            orderData.customerDetails.customerPhone,
+            orderData.customerDetails.customerAddress,
+            orderData.customerDetails.customerCity,
+            formatOrderItemsForSheet(orderData.items),
+            orderData.total,
+            orderData.customerDetails.paymentMethod,
+            orderData.customerDetails.specialInstructions || '',
+            orderData.timestamp
+        ];
+
+        // Append data to the sheet
+        const response = await gapi.client.sheets.spreadsheets.values.append({
+            spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
+            range: GOOGLE_SHEETS_CONFIG.range,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [rowData]
+            }
+        });
+
+        console.log('Order saved to Google Sheets:', response);
+        return response;
+
+    } catch (error) {
+        console.error('Error saving to Google Sheets:', error);
+        throw error;
+    }
+}
+
+// Format order items for spreadsheet
+function formatOrderItemsForSheet(items) {
+    return items.map(item => 
+        `${item.productName} (${item.weight}) x${item.quantity} = ₹${item.totalPrice}`
+    ).join('; ');
+}
+
+// Initialize Google Sheets with headers (call this once to set up the sheet)
+async function initializeGoogleSheetsHeaders() {
+    if (!sheetsApiLoaded) {
+        console.error('Google Sheets API not loaded');
+        return;
+    }
+
+    try {
+        const headers = [
+            'Order Number',
+            'Date',
+            'Time', 
+            'Customer Name',
+            'Email',
+            'Phone',
+            'Address',
+            'City',
+            'Items Ordered',
+            'Total Amount',
+            'Payment Method',
+            'Special Instructions',
+            'Timestamp'
+        ];
+
+        const response = await gapi.client.sheets.spreadsheets.values.update({
+            spreadsheetId: GOOGLE_SHEETS_CONFIG.spreadsheetId,
+            range: 'Orders!A1:M1',
+            valueInputOption: 'RAW',
+            resource: {
+                values: [headers]
+            }
+        });
+
+        console.log('Headers initialized in Google Sheets:', response);
+    } catch (error) {
+        console.error('Error initializing headers:', error);
+    }
 }
 
 // Generate order number
