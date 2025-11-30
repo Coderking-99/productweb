@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
     <!-- Navigation -->
@@ -28,6 +29,12 @@
                 </li>
                 <li class="nav-item">
                     <a href="#contact" class="nav-link">Contact</a>
+                </li>
+                <li class="nav-item">
+                    <button class="cart-btn" id="cartBtn">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </button>
                 </li>
             </ul>
             <div class="nav-toggle" id="mobile-menu">
@@ -131,10 +138,29 @@
                     </div>
                     <h3>Sheng Dane Laddu</h3>
                     <p>Traditional peanut laddu made with roasted groundnuts, jaggery and aromatic spices. A perfect blend of nutrition and taste.</p>
-                    <div style="margin: 1rem 0; font-weight: bold; color: var(--primary-color);">
-                        <p>₹290 per 1kg | ₹145 per 500g</p>
+                    
+                    <div class="product-options">
+                        <div class="weight-options">
+                            <label class="weight-option">
+                                <input type="radio" name="sheng-weight" value="1kg" data-price="290" checked>
+                                <span>1kg - ₹290</span>
+                            </label>
+                            <label class="weight-option">
+                                <input type="radio" name="sheng-weight" value="500g" data-price="145">
+                                <span>500g - ₹145</span>
+                            </label>
+                        </div>
+                        
+                        <div class="quantity-selector">
+                            <button class="qty-btn" onclick="decreaseQty('sheng')">-</button>
+                            <input type="number" id="sheng-qty" value="1" min="1" max="10">
+                            <button class="qty-btn" onclick="increaseQty('sheng')">+</button>
+                        </div>
+                        
+                        <button class="add-to-cart-btn" onclick="addToCart('sheng-dane-laddu', 'Sheng Dane Laddu')">
+                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                        </button>
                     </div>
-                    <a href="#contact" class="service-link">Order Now <i class="fas fa-arrow-right"></i></a>
                 </div>
                 <div class="service-card">
                     <div class="service-icon">
@@ -142,10 +168,29 @@
                     </div>
                     <h3>Besan Laddu</h3>
                     <p>Classic gram flour laddu prepared with pure ghee, dry fruits and traditional spices. Rich in flavor and heritage.</p>
-                    <div style="margin: 1rem 0; font-weight: bold; color: var(--primary-color);">
-                        <p>₹350 per 1kg | ₹175 per 500g</p>
+                    
+                    <div class="product-options">
+                        <div class="weight-options">
+                            <label class="weight-option">
+                                <input type="radio" name="besan-weight" value="1kg" data-price="350" checked>
+                                <span>1kg - ₹350</span>
+                            </label>
+                            <label class="weight-option">
+                                <input type="radio" name="besan-weight" value="500g" data-price="175">
+                                <span>500g - ₹175</span>
+                            </label>
+                        </div>
+                        
+                        <div class="quantity-selector">
+                            <button class="qty-btn" onclick="decreaseQty('besan')">-</button>
+                            <input type="number" id="besan-qty" value="1" min="1" max="10">
+                            <button class="qty-btn" onclick="increaseQty('besan')">+</button>
+                        </div>
+                        
+                        <button class="add-to-cart-btn" onclick="addToCart('besan-laddu', 'Besan Laddu')">
+                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                        </button>
                     </div>
-                    <a href="#contact" class="service-link">Order Now <i class="fas fa-arrow-right"></i></a>
                 </div>
                 <div class="service-card">
                     <div class="service-icon">
@@ -153,10 +198,29 @@
                     </div>
                     <h3>Methi Laddu</h3>
                     <p>Nutritious fenugreek laddu with jaggery and premium ingredients. Known for its health benefits and delicious taste.</p>
-                    <div style="margin: 1rem 0; font-weight: bold; color: var(--primary-color);">
-                        <p>₹710 per 1kg | ₹355 per 500g</p>
+                    
+                    <div class="product-options">
+                        <div class="weight-options">
+                            <label class="weight-option">
+                                <input type="radio" name="methi-weight" value="1kg" data-price="710" checked>
+                                <span>1kg - ₹710</span>
+                            </label>
+                            <label class="weight-option">
+                                <input type="radio" name="methi-weight" value="500g" data-price="355">
+                                <span>500g - ₹355</span>
+                            </label>
+                        </div>
+                        
+                        <div class="quantity-selector">
+                            <button class="qty-btn" onclick="decreaseQty('methi')">-</button>
+                            <input type="number" id="methi-qty" value="1" min="1" max="10">
+                            <button class="qty-btn" onclick="increaseQty('methi')">+</button>
+                        </div>
+                        
+                        <button class="add-to-cart-btn" onclick="addToCart('methi-laddu', 'Methi Laddu')">
+                            <i class="fas fa-shopping-cart"></i> Add to Cart
+                        </button>
                     </div>
-                    <a href="#contact" class="service-link">Order Now <i class="fas fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>
@@ -318,6 +382,115 @@
             </div>
         </div>
     </footer>
+
+    <!-- Cart Modal -->
+    <div class="cart-modal" id="cartModal">
+        <div class="cart-content">
+            <div class="cart-header">
+                <h2>Your Cart</h2>
+                <button class="close-cart" id="closeCart">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="cart-body" id="cartBody">
+                <div class="empty-cart" id="emptyCart">
+                    <i class="fas fa-shopping-cart"></i>
+                    <p>Your cart is empty</p>
+                </div>
+                
+                <div class="cart-items" id="cartItems"></div>
+            </div>
+            
+            <div class="cart-footer" id="cartFooter" style="display: none;">
+                <div class="cart-total">
+                    <h3>Total: ₹<span id="cartTotal">0</span></h3>
+                </div>
+                <button class="checkout-btn" id="checkoutBtn">
+                    <i class="fas fa-credit-card"></i> Proceed to Checkout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="checkout-modal" id="checkoutModal">
+        <div class="checkout-content">
+            <div class="checkout-header">
+                <h2>Checkout</h2>
+                <button class="close-checkout" id="closeCheckout">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="checkout-body">
+                <div class="order-summary">
+                    <h3>Order Summary</h3>
+                    <div id="checkoutItems"></div>
+                    <div class="checkout-total">
+                        <strong>Total: ₹<span id="checkoutTotal">0</span></strong>
+                    </div>
+                </div>
+                
+                <form class="checkout-form" id="checkoutForm">
+                    <h3>Delivery Details</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="customerName" name="customerName" placeholder="Full Name" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="email" id="customerEmail" name="customerEmail" placeholder="Email Address" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="tel" id="customerPhone" name="customerPhone" placeholder="Phone Number" required>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="customerCity" name="customerCity" placeholder="City" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <textarea id="customerAddress" name="customerAddress" placeholder="Complete Address" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <select id="paymentMethod" name="paymentMethod" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="cod">Cash on Delivery</option>
+                            <option value="online">Online Payment (UPI/Card)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <textarea id="specialInstructions" name="specialInstructions" placeholder="Special Instructions (Optional)" rows="2"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full">
+                        <i class="fas fa-check"></i> Place Order
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal">
+        <div class="confirmation-content">
+            <div class="confirmation-header">
+                <i class="fas fa-check-circle"></i>
+                <h2>Order Confirmed!</h2>
+            </div>
+            <div class="confirmation-body">
+                <p>Thank you for your order! Your receipt has been sent to your email.</p>
+                <div class="order-details" id="orderDetails"></div>
+                <button class="btn btn-primary" onclick="closeConfirmation()">Continue Shopping</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Back to Top Button -->
     <button class="back-to-top" id="backToTop">

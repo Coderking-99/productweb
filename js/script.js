@@ -376,3 +376,348 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Modern website initialized successfully!');
 });
+
+// EmailJS Configuration
+// Initialize EmailJS with your public key
+(function() {
+    // Replace 'YOUR_PUBLIC_KEY' with your actual EmailJS public key
+    emailjs.init('YOUR_PUBLIC_KEY'); // You'll need to replace this
+})();
+
+// EmailJS Service Configuration
+const EMAILJS_CONFIG = {
+    serviceID: 'YOUR_SERVICE_ID', // You'll need to replace this
+    templateID: 'YOUR_TEMPLATE_ID', // You'll need to replace this
+    publicKey: 'YOUR_PUBLIC_KEY' // You'll need to replace this
+};
+
+// Cart functionality
+let cart = [];
+
+// Quantity control functions
+function increaseQty(product) {
+    const qtyInput = document.getElementById(`${product}-qty`);
+    const currentValue = parseInt(qtyInput.value);
+    if (currentValue < 10) {
+        qtyInput.value = currentValue + 1;
+    }
+}
+
+function decreaseQty(product) {
+    const qtyInput = document.getElementById(`${product}-qty`);
+    const currentValue = parseInt(qtyInput.value);
+    if (currentValue > 1) {
+        qtyInput.value = currentValue - 1;
+    }
+}
+
+// Add to cart function
+function addToCart(productId, productName) {
+    const productType = productId.split('-')[0]; // 'sheng', 'besan', or 'methi'
+    const weightRadio = document.querySelector(`input[name="${productType}-weight"]:checked`);
+    const qtyInput = document.getElementById(`${productType}-qty`);
+    
+    if (!weightRadio) {
+        showNotification('Please select a weight option', 'error');
+        return;
+    }
+    
+    const weight = weightRadio.value;
+    const price = parseInt(weightRadio.getAttribute('data-price'));
+    const quantity = parseInt(qtyInput.value);
+    const totalPrice = price * quantity;
+    
+    // Check if item already exists in cart
+    const existingItemIndex = cart.findIndex(item => 
+        item.productId === productId && item.weight === weight
+    );
+    
+    if (existingItemIndex > -1) {
+        cart[existingItemIndex].quantity += quantity;
+        cart[existingItemIndex].totalPrice = cart[existingItemIndex].price * cart[existingItemIndex].quantity;
+    } else {
+        cart.push({
+            productId,
+            productName,
+            weight,
+            price,
+            quantity,
+            totalPrice
+        });
+    }
+    
+    updateCartUI();
+    showNotification(`${productName} (${weight}) added to cart!`, 'success');
+    
+    // Reset quantity to 1
+    qtyInput.value = 1;
+}
+
+// Update cart UI
+function updateCartUI() {
+    const cartCount = document.getElementById('cartCount');
+    const cartItems = document.getElementById('cartItems');
+    const cartTotal = document.getElementById('cartTotal');
+    const emptyCart = document.getElementById('emptyCart');
+    const cartFooter = document.getElementById('cartFooter');
+    
+    // Update cart count
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    cartCount.textContent = totalItems;
+    
+    // Update cart items display
+    if (cart.length === 0) {
+        emptyCart.style.display = 'block';
+        cartFooter.style.display = 'none';
+        cartItems.innerHTML = '';
+    } else {
+        emptyCart.style.display = 'none';
+        cartFooter.style.display = 'block';
+        
+        cartItems.innerHTML = cart.map((item, index) => `
+            <div class="cart-item">
+                <div class="cart-item-info">
+                    <h4>${item.productName}</h4>
+                    <p>${item.weight} - ₹${item.price} × ${item.quantity}</p>
+                </div>
+                <div class="cart-item-actions">
+                    <strong>₹${item.totalPrice}</strong>
+                    <button class="remove-item" onclick="removeFromCart(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // Update total
+        const total = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+        cartTotal.textContent = total;
+    }
+}
+
+// Remove from cart
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartUI();
+    showNotification('Item removed from cart', 'info');
+}
+
+// Cart modal functions
+document.addEventListener('DOMContentLoaded', function() {
+    const cartBtn = document.getElementById('cartBtn');
+    const cartModal = document.getElementById('cartModal');
+    const closeCart = document.getElementById('closeCart');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const checkoutModal = document.getElementById('checkoutModal');
+    const closeCheckout = document.getElementById('closeCheckout');
+    const checkoutForm = document.getElementById('checkoutForm');
+    const confirmationModal = document.getElementById('confirmationModal');
+    
+    // Open cart modal
+    cartBtn.addEventListener('click', () => {
+        cartModal.classList.add('active');
+    });
+    
+    // Close cart modal
+    closeCart.addEventListener('click', () => {
+        cartModal.classList.remove('active');
+    });
+    
+    // Open checkout modal
+    checkoutBtn.addEventListener('click', () => {
+        if (cart.length === 0) return;
+        
+        cartModal.classList.remove('active');
+        checkoutModal.classList.add('active');
+        updateCheckoutSummary();
+    });
+    
+    // Close checkout modal
+    closeCheckout.addEventListener('click', () => {
+        checkoutModal.classList.remove('active');
+    });
+    
+    // Handle checkout form submission
+    checkoutForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        processOrder();
+    });
+    
+    // Close modals on outside click
+    window.addEventListener('click', (e) => {
+        if (e.target === cartModal) {
+            cartModal.classList.remove('active');
+        }
+        if (e.target === checkoutModal) {
+            checkoutModal.classList.remove('active');
+        }
+        if (e.target === confirmationModal) {
+            confirmationModal.classList.remove('active');
+        }
+    });
+});
+
+// Update checkout summary
+function updateCheckoutSummary() {
+    const checkoutItems = document.getElementById('checkoutItems');
+    const checkoutTotal = document.getElementById('checkoutTotal');
+    
+    checkoutItems.innerHTML = cart.map(item => `
+        <div class="checkout-item">
+            <span>${item.productName} (${item.weight}) × ${item.quantity}</span>
+            <span>₹${item.totalPrice}</span>
+        </div>
+    `).join('');
+    
+    const total = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    checkoutTotal.textContent = total;
+}
+
+// Process order and send email
+function processOrder() {
+    const formData = new FormData(document.getElementById('checkoutForm'));
+    const customerDetails = {};
+    formData.forEach((value, key) => {
+        customerDetails[key] = value;
+    });
+    
+    const orderData = {
+        orderNumber: generateOrderNumber(),
+        customerDetails,
+        items: cart,
+        total: cart.reduce((sum, item) => sum + item.totalPrice, 0),
+        orderDate: new Date().toLocaleDateString('en-IN'),
+        orderTime: new Date().toLocaleTimeString('en-IN')
+    };
+    
+    // Close checkout modal and show loading
+    document.getElementById('checkoutModal').classList.remove('active');
+    showNotification('Processing your order and sending confirmation...', 'info');
+    
+    // Send email receipt
+    setTimeout(() => {
+        sendEmailReceipt(orderData);
+        showOrderConfirmation(orderData);
+        cart = []; // Clear cart
+        updateCartUI();
+    }, 1500);
+}
+
+// Generate order number
+function generateOrderNumber() {
+    return 'SBL' + Date.now().toString().slice(-6);
+}
+
+// Send email receipt using EmailJS
+function sendEmailReceipt(orderData) {
+    // Prepare email parameters
+    const emailParams = {
+        to_email: orderData.customerDetails.customerEmail,
+        customer_name: orderData.customerDetails.customerName,
+        order_number: orderData.orderNumber,
+        order_date: orderData.orderDate,
+        order_time: orderData.orderTime,
+        customer_phone: orderData.customerDetails.customerPhone,
+        customer_address: orderData.customerDetails.customerAddress,
+        customer_city: orderData.customerDetails.customerCity,
+        payment_method: orderData.customerDetails.paymentMethod.toUpperCase(),
+        special_instructions: orderData.customerDetails.specialInstructions || 'None',
+        order_items: formatOrderItems(orderData.items),
+        total_amount: orderData.total,
+        // Store owner email (your email)
+        store_email: 'Shubhamdesai080@outlook.com'
+    };
+
+    // Send email to customer
+    emailjs.send(EMAILJS_CONFIG.serviceID, EMAILJS_CONFIG.templateID, emailParams)
+        .then(function(response) {
+            console.log('Customer email sent successfully:', response);
+            
+            // Send notification to store owner
+            sendStoreNotification(orderData, emailParams);
+            
+        }, function(error) {
+            console.error('Failed to send customer email:', error);
+            showNotification('Order placed successfully, but email receipt failed. We will contact you shortly.', 'info');
+        });
+}
+
+// Send notification to store owner
+function sendStoreNotification(orderData, emailParams) {
+    // Prepare store notification email
+    const storeEmailParams = {
+        ...emailParams,
+        to_email: 'Shubhamdesai080@outlook.com', // Your email
+        subject: `New Order #${orderData.orderNumber} - Shobhaladdu.in`
+    };
+
+    // Send to store owner (you can use a different template for this)
+    emailjs.send(EMAILJS_CONFIG.serviceID, 'YOUR_STORE_TEMPLATE_ID', storeEmailParams)
+        .then(function(response) {
+            console.log('Store notification sent successfully:', response);
+        }, function(error) {
+            console.error('Failed to send store notification:', error);
+        });
+}
+
+// Format order items for email
+function formatOrderItems(items) {
+    return items.map(item => 
+        `${item.productName} (${item.weight}) × ${item.quantity} = ₹${item.totalPrice}`
+    ).join('\n');
+}
+
+// Generate email receipt content
+function generateEmailReceipt(orderData) {
+    return `
+        <h2>Order Confirmation - ${orderData.orderNumber}</h2>
+        <p>Dear ${orderData.customerDetails.customerName},</p>
+        <p>Thank you for your order! Here are your order details:</p>
+        
+        <h3>Order Details:</h3>
+        <ul>
+            ${orderData.items.map(item => 
+                `<li>${item.productName} (${item.weight}) × ${item.quantity} = ₹${item.totalPrice}</li>`
+            ).join('')}
+        </ul>
+        
+        <p><strong>Total Amount: ₹${orderData.total}</strong></p>
+        <p><strong>Payment Method: ${orderData.customerDetails.paymentMethod.toUpperCase()}</strong></p>
+        
+        <h3>Delivery Address:</h3>
+        <p>${orderData.customerDetails.customerAddress}<br>
+        ${orderData.customerDetails.customerCity}</p>
+        
+        <p>Order Date: ${orderData.orderDate} at ${orderData.orderTime}</p>
+        
+        <p>We will contact you shortly to confirm your order and delivery details.</p>
+        
+        <p>Thank you for choosing Shobhaladdu.in!</p>
+    `;
+}
+
+// Show order confirmation
+function showOrderConfirmation(orderData) {
+    const confirmationModal = document.getElementById('confirmationModal');
+    const orderDetails = document.getElementById('orderDetails');
+    
+    orderDetails.innerHTML = `
+        <div style="text-align: center; margin: 1rem 0;">
+            <p><strong>Order Number: ${orderData.orderNumber}</strong></p>
+            <p>Total Amount: ₹${orderData.total}</p>
+            <p>Payment: ${orderData.customerDetails.paymentMethod.toUpperCase()}</p>
+        </div>
+    `;
+    
+    confirmationModal.classList.add('active');
+}
+
+// Close confirmation modal
+function closeConfirmation() {
+    document.getElementById('confirmationModal').classList.remove('active');
+}
+
+// Show loading message
+function showLoadingMessage() {
+    showNotification('Processing your order...', 'info');
+}
